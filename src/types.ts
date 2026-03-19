@@ -1,12 +1,12 @@
 export interface ProductEntry {
   id: string
   product: string
-  techStacks: string[]
+  searchTerms: string[]
 }
 
 export interface DocResult {
   product: string
-  techStack: string
+  searchTerm: string
   category: string
   title: string
   url: string
@@ -15,7 +15,7 @@ export interface DocResult {
 export interface SearchRequest {
   entries: Array<{
     product: string
-    techStacks: string[]
+    searchTerms: string[]
   }>
 }
 

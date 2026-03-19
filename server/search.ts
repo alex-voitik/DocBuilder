@@ -111,7 +111,7 @@ async function fetchAllPages(query: string, perPage = 250, maxPages = 4): Promis
 
 export interface SearchEntry {
   product: string
-  techStacks: string[]
+  searchTerms: string[]
 }
 
 export async function searchDocs(
@@ -122,34 +122,52 @@ export async function searchDocs(
   let totalFound = 0
 
   const push = (r: DocResult) => {
-    const key = `${r.product}|${r.techStack}|${r.url}`
+    const key = `${r.product}|${r.searchTerm}|${r.url}`
     if (!seen.has(key)) { seen.add(key); results.push(r) }
   }
 
-  // Separate entries into "all docs" vs "tech-specific + overview"
-  type QueryJob = { product: string; techStack: string; query: string; allDocs: boolean }
+  // Separate entries into "all docs" vs "term-specific + overview"
+  type QueryJob = { product: string; searchTerm: string; query: string; allDocs: boolean }
   const jobs: QueryJob[] = []
   const productsNeedingOverview = new Set<string>()
 
   for (const entry of entries) {
     const product = entry.product.trim()
-    if (entry.techStacks.length === 0) {
-      jobs.push({ product, techStack: 'All', query: product, allDocs: true })
+    if (entry.searchTerms.length === 0) {
+      jobs.push({ product, searchTerm: 'All', query: product, allDocs: true })
     } else {
       productsNeedingOverview.add(product)
-      for (const tech of entry.techStacks) {
-        jobs.push({ product, techStack: tech, query: `${product} ${tech}`, allDocs: false })
+      for (const term of entry.searchTerms) {
+        jobs.push({ product, searchTerm: term, query: `${product} ${term}`, allDocs: false })
       }
     }
   }
 
-  // Run tech-stack queries and overview queries concurrently
+  // Run search queries and overview queries concurrently
   const [settled, overviewResults] = await Promise.all([
     Promise.allSettled(
       jobs.map(async job => {
-        const docs = job.allDocs
-          ? await fetchAllPages(job.query, 250, 4)
-          : (await tsSearch(job.query, 100)).hits.map(h => h.document)
+        let docs: TSDocument[]
+        if (job.allDocs) {
+          docs = await fetchAllPages(job.query, 250, 4)
+        } else {
+          // Run both orderings concurrently to catch pages where the term
+          // is the primary URL segment (e.g. "agent" in /agent/logs/)
+          const reversedQuery = `${job.searchTerm} ${job.product}`
+          const [fwd, rev] = await Promise.all([
+            tsSearch(job.query, 250),
+            tsSearch(reversedQuery, 250),
+          ])
+          const seen = new Set<string>()
+          docs = []
+          for (const hit of [...fwd.hits, ...rev.hits]) {
+            const url = urlFromDoc(hit.document)
+            if (url && !seen.has(url)) {
+              seen.add(url)
+              docs.push(hit.document)
+            }
+          }
+        }
         return { job, docs }
       })
     ),
@@ -167,7 +185,7 @@ export async function searchDocs(
     for (const doc of r.value.docs) {
       const url = urlFromDoc(doc)
       if (!url) continue
-      push({ product: r.value.product, techStack: 'Overview & Setup', category: categoryFromUrl(url), title: doc.title ?? url, url })
+      push({ product: r.value.product, searchTerm: 'Overview & Setup', category: categoryFromUrl(url), title: doc.title ?? url, url })
     }
   }
 
@@ -181,16 +199,16 @@ export async function searchDocs(
     totalFound += docs.length
 
     if (docs.length === 0 && !job.allDocs) {
-      // No tech-specific results — fall back to top product results
-      const fallback = await tsSearch(job.product, 5)
+      // No term-specific results — fall back to top product results
+      const fallback = await tsSearch(job.product, 10)
       for (const h of fallback.hits.slice(0, 5)) {
         const url = urlFromDoc(h.document)
         if (!url) continue
         push({
           product: job.product,
-          techStack: job.techStack,
+          searchTerm: job.searchTerm,
           category: categoryFromUrl(url),
-          title: `${h.document.title ?? url} (no ${job.techStack}-specific page found)`,
+          title: `${h.document.title ?? url} (no ${job.searchTerm}-specific page found)`,
           url,
         })
       }
@@ -200,7 +218,7 @@ export async function searchDocs(
     for (const doc of docs) {
       const url = urlFromDoc(doc)
       if (!url) continue
-      push({ product: job.product, techStack: job.techStack, category: categoryFromUrl(url), title: doc.title ?? url, url })
+      push({ product: job.product, searchTerm: job.searchTerm, category: categoryFromUrl(url), title: doc.title ?? url, url })
     }
   }
 

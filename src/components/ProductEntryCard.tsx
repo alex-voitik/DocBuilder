@@ -9,27 +9,27 @@ interface Props {
 }
 
 export default function ProductEntryCard({ entry, index, onUpdate, onRemove }: Props) {
-  const [techInput, setTechInput] = useState('')
+  const [termInput, setTermInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const addTech = (raw: string) => {
+  const addTerm = (raw: string) => {
     const trimmed = raw.trim()
-    if (trimmed && !entry.techStacks.includes(trimmed)) {
-      onUpdate({ techStacks: [...entry.techStacks, trimmed] })
+    if (trimmed && !entry.searchTerms.includes(trimmed)) {
+      onUpdate({ searchTerms: [...entry.searchTerms, trimmed] })
     }
-    setTechInput('')
+    setTermInput('')
   }
 
-  const removeTech = (tech: string) => {
-    onUpdate({ techStacks: entry.techStacks.filter(t => t !== tech) })
+  const removeTerm = (term: string) => {
+    onUpdate({ searchTerms: entry.searchTerms.filter(t => t !== term) })
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
-      addTech(techInput)
-    } else if (e.key === 'Backspace' && !techInput && entry.techStacks.length > 0) {
-      removeTech(entry.techStacks[entry.techStacks.length - 1])
+      addTerm(termInput)
+    } else if (e.key === 'Backspace' && !termInput && entry.searchTerms.length > 0) {
+      removeTerm(entry.searchTerms[entry.searchTerms.length - 1])
     }
   }
 
@@ -57,14 +57,14 @@ export default function ProductEntryCard({ entry, index, onUpdate, onRemove }: P
 
         <div className="field">
           <label>
-            Tech Stacks
-            <span className="field-hint"> — press Enter to add, leave empty for all</span>
+            Search Parameters
+            <span className="field-hint"> — tech stack, category, keyword… press Enter to add, leave empty for all</span>
           </label>
           <div className="tag-input" onClick={() => inputRef.current?.focus()}>
-            {entry.techStacks.map(tech => (
-              <span key={tech} className="tag">
-                {tech}
-                <button type="button" onClick={() => removeTech(tech)}>
+            {entry.searchTerms.map(term => (
+              <span key={term} className="tag">
+                {term}
+                <button type="button" onClick={() => removeTerm(term)}>
                   ×
                 </button>
               </span>
@@ -72,11 +72,11 @@ export default function ProductEntryCard({ entry, index, onUpdate, onRemove }: P
             <input
               ref={inputRef}
               type="text"
-              placeholder={entry.techStacks.length === 0 ? 'Add tech stack…' : ''}
-              value={techInput}
-              onChange={e => setTechInput(e.target.value)}
+              placeholder={entry.searchTerms.length === 0 ? 'Add search term…' : ''}
+              value={termInput}
+              onChange={e => setTermInput(e.target.value)}
               onKeyDown={onKeyDown}
-              onBlur={() => { if (techInput.trim()) addTech(techInput) }}
+              onBlur={() => { if (termInput.trim()) addTerm(termInput) }}
             />
           </div>
         </div>

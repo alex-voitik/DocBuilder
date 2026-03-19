@@ -26,7 +26,7 @@ export default function ResultsTable({ results, totalUrls }: Props) {
           <thead>
             <tr>
               <th>Product</th>
-              <th>Tech Stack</th>
+              <th>Search Parameter</th>
               <th>Category</th>
               <th>Page Title</th>
               <th>Documentation URL</th>
@@ -38,7 +38,7 @@ export default function ResultsTable({ results, totalUrls }: Props) {
                 <td>
                   <span className="product-badge">{r.product}</span>
                 </td>
-                <td>{r.techStack}</td>
+                <td>{r.searchTerm}</td>
                 <td>{r.category}</td>
                 <td>{r.title}</td>
                 <td>

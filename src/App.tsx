@@ -7,7 +7,7 @@ import './App.css'
 
 export default function App() {
   const [entries, setEntries] = useState<ProductEntry[]>([
-    { id: '1', product: '', techStacks: [] },
+    { id: '1', product: '', searchTerms: [] },
   ])
   const [results, setResults] = useState<DocResult[]>([])
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
@@ -16,7 +16,7 @@ export default function App() {
   const [totalUrls, setTotalUrls] = useState<number | null>(null)
 
   const allCategories = useMemo(
-    () => [...new Set(results.map(r => r.category))].sort(),
+    () => [...new Set(results.map((r) => r.category))].sort(),
     [results]
   )
 
@@ -26,7 +26,7 @@ export default function App() {
   )
 
   const addEntry = () => {
-    setEntries(prev => [...prev, { id: Date.now().toString(), product: '', techStacks: [] }])
+    setEntries(prev => [...prev, { id: Date.now().toString(), product: '', searchTerms: [] }])
   }
 
   const removeEntry = (id: string) => {
@@ -53,7 +53,7 @@ export default function App() {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: valid.map(e => ({ product: e.product, techStacks: e.techStacks })) }),
+        body: JSON.stringify({ entries: valid.map(e => ({ product: e.product, searchTerms: e.searchTerms })) }),
       })
       const data: SearchResponse = await res.json()
       if (!res.ok) throw new Error(data.error || 'Search failed')
