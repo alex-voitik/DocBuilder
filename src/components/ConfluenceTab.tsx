@@ -10,7 +10,7 @@ interface Credentials {
 
 function loadCredentials(): Credentials | null {
   try {
-    const raw = localStorage.getItem(CREDS_KEY)
+    const raw = sessionStorage.getItem(CREDS_KEY)
     return raw ? (JSON.parse(raw) as Credentials) : null
   } catch {
     return null
@@ -57,7 +57,7 @@ export default function ConfluenceTab() {
   const saveCreds = () => {
     if (!emailInput.trim() || !tokenInput.trim()) return
     const newCreds = { email: emailInput.trim(), apiToken: tokenInput.trim() }
-    localStorage.setItem(CREDS_KEY, JSON.stringify(newCreds))
+    sessionStorage.setItem(CREDS_KEY, JSON.stringify(newCreds))
     setCreds(newCreds)
     setEditingCreds(false)
     setTokenInput('')
@@ -70,7 +70,7 @@ export default function ConfluenceTab() {
   }
 
   const clearCreds = () => {
-    localStorage.removeItem(CREDS_KEY)
+    sessionStorage.removeItem(CREDS_KEY)
     setCreds(null)
     setEditingCreds(true)
     setEmailInput('')
