@@ -18,6 +18,19 @@ interface ConfluenceApiResponse {
 
 const CONFLUENCE_BASE = 'https://datadoghq.atlassian.net/wiki/rest/api'
 
+async function fetchViewCount(credentials: string, contentId: string): Promise<number> {
+  try {
+    const res = await fetch(`${CONFLUENCE_BASE}/analytics/content/${contentId}/views`, {
+      headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
+    })
+    if (!res.ok) return 0
+    const data = await res.json() as { count?: number }
+    return data.count ?? 0
+  } catch {
+    return 0
+  }
+}
+
 async function cfSearch(credentials: string, query: string, limit = 25): Promise<ConfluencePage[]> {
   const cql = `type = page AND text ~ "${query.replace(/"/g, '\\"')}"`
   const url = `${CONFLUENCE_BASE}/content/search?cql=${encodeURIComponent(cql)}&limit=${limit}&expand=space`
@@ -84,7 +97,8 @@ export async function searchConfluence(
   }
 
   const seen = new Set<string>()
-  const results: ConfluenceResult[] = []
+  type Intermediate = ConfluenceResult & { contentId: string }
+  const intermediate: Intermediate[] = []
 
   for (const r of settled) {
     if (r.status !== 'fulfilled') continue
@@ -94,15 +108,26 @@ export async function searchConfluence(
       const key = `${job.product}|${url}`
       if (seen.has(key)) continue
       seen.add(key)
-      results.push({
+      intermediate.push({
+        contentId: page.id,
         product: job.product,
         searchTerm: job.searchTerm,
         space: page.space?.name ?? page.space?.key ?? '',
         title: page.title,
         url,
+        views: 0,
       })
     }
   }
+
+  // Fetch view counts in parallel and sort most-viewed first
+  const viewCounts = await Promise.all(
+    intermediate.map(r => fetchViewCount(credentials, r.contentId))
+  )
+
+  const results: ConfluenceResult[] = intermediate
+    .map(({ contentId: _, ...r }, i) => ({ ...r, views: viewCounts[i] }))
+    .sort((a, b) => b.views - a.views)
 
   return results
 }
