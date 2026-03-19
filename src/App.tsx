@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { ProductEntry, DocResult, SearchResponse } from './types'
 import ProductEntryCard from './components/ProductEntryCard'
+import CategoryFilter from './components/CategoryFilter'
 import ResultsTable from './components/ResultsTable'
 import './App.css'
 
@@ -9,9 +10,20 @@ export default function App() {
     { id: '1', product: '', techStacks: [] },
   ])
   const [results, setResults] = useState<DocResult[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [totalUrls, setTotalUrls] = useState<number | null>(null)
+
+  const allCategories = useMemo(
+    () => [...new Set(results.map(r => r.category))].sort(),
+    [results]
+  )
+
+  const filteredResults = useMemo(
+    () => results.filter(r => selectedCategories.has(r.category)),
+    [results, selectedCategories]
+  )
 
   const addEntry = () => {
     setEntries(prev => [...prev, { id: Date.now().toString(), product: '', techStacks: [] }])
@@ -46,6 +58,7 @@ export default function App() {
       const data: SearchResponse = await res.json()
       if (!res.ok) throw new Error(data.error || 'Search failed')
       setResults(data.results)
+      setSelectedCategories(new Set(data.results.map(r => r.category)))
       setTotalUrls(data.totalUrls)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
@@ -104,7 +117,14 @@ export default function App() {
         )}
 
         {!loading && results.length > 0 && (
-          <ResultsTable results={results} totalUrls={totalUrls} />
+          <>
+            <CategoryFilter
+              categories={allCategories}
+              selected={selectedCategories}
+              onChange={setSelectedCategories}
+            />
+            <ResultsTable results={filteredResults} totalUrls={totalUrls} />
+          </>
         )}
 
         {!loading && results.length === 0 && totalUrls !== null && (

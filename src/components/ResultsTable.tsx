@@ -27,6 +27,7 @@ export default function ResultsTable({ results, totalUrls }: Props) {
             <tr>
               <th>Product</th>
               <th>Tech Stack</th>
+              <th>Category</th>
               <th>Page Title</th>
               <th>Documentation URL</th>
             </tr>
@@ -38,6 +39,7 @@ export default function ResultsTable({ results, totalUrls }: Props) {
                   <span className="product-badge">{r.product}</span>
                 </td>
                 <td>{r.techStack}</td>
+                <td>{r.category}</td>
                 <td>{r.title}</td>
                 <td>
                   <a href={r.url} target="_blank" rel="noopener noreferrer">

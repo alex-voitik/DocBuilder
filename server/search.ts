@@ -43,6 +43,19 @@ async function tsSearch(query: string, perPage: number, page = 1): Promise<TSRes
   return data
 }
 
+function categoryFromUrl(url: string): string {
+  const path = url.replace('https://docs.datadoghq.com', '').replace(/^\/|\/$/g, '')
+  return path
+    .split('/')
+    .filter(Boolean)
+    .map(s =>
+      s.replace(/^dd_/i, '')
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+    )
+    .join(' > ')
+}
+
 function urlFromDoc(doc: TSDocument): string | null {
   const raw = doc.url ?? (doc.relpermalink
     ? (doc.relpermalink.startsWith('http') ? doc.relpermalink : DOCS_BASE + doc.relpermalink)
@@ -154,7 +167,7 @@ export async function searchDocs(
     for (const doc of r.value.docs) {
       const url = urlFromDoc(doc)
       if (!url) continue
-      push({ product: r.value.product, techStack: 'Overview & Setup', title: doc.title ?? url, url })
+      push({ product: r.value.product, techStack: 'Overview & Setup', category: categoryFromUrl(url), title: doc.title ?? url, url })
     }
   }
 
@@ -176,6 +189,7 @@ export async function searchDocs(
         push({
           product: job.product,
           techStack: job.techStack,
+          category: categoryFromUrl(url),
           title: `${h.document.title ?? url} (no ${job.techStack}-specific page found)`,
           url,
         })
@@ -186,7 +200,7 @@ export async function searchDocs(
     for (const doc of docs) {
       const url = urlFromDoc(doc)
       if (!url) continue
-      push({ product: job.product, techStack: job.techStack, title: doc.title ?? url, url })
+      push({ product: job.product, techStack: job.techStack, category: categoryFromUrl(url), title: doc.title ?? url, url })
     }
   }
 

@@ -248,6 +248,58 @@
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Category filter ──────────────────────────────────── */
+.category-filter {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--dd-gray-200);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.filter-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.filter-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  flex: 1;
+}
+.filter-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.filter-actions .btn-secondary {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+.filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--dd-gray-900);
+  white-space: nowrap;
+}
+.filter-item input[type='checkbox'] {
+  accent-color: var(--dd-purple);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
 /* ── Results section ──────────────────────────────────── */
 .results-section {
   background: white;

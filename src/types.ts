@@ -7,6 +7,7 @@ export interface ProductEntry {
 export interface DocResult {
   product: string
   techStack: string
+  category: string
   title: string
   url: string
 }
