@@ -20,9 +20,10 @@ const CONFLUENCE_BASE = 'https://datadoghq.atlassian.net/wiki/rest/api'
 
 async function fetchViewCount(credentials: string, contentId: string): Promise<number> {
   try {
-    const res = await fetch(`${CONFLUENCE_BASE}/analytics/content/${contentId}/views`, {
-      headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' },
-    })
+    const res = await fetch(
+      `${CONFLUENCE_BASE}/analytics/content/${contentId}/views?fromDate=2010-01-01`,
+      { headers: { Authorization: `Basic ${credentials}`, Accept: 'application/json' } }
+    )
     if (!res.ok) return 0
     const data = await res.json() as { count?: number }
     return data.count ?? 0
