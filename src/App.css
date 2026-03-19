@@ -15,6 +15,33 @@
   font-size: 0.95rem;
 }
 
+/* ── Tab navigation ───────────────────────────────────── */
+.tab-nav {
+  background: white;
+  border-bottom: 1px solid var(--dd-gray-200);
+  display: flex;
+  gap: 0;
+  padding: 0 2rem;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dd-gray-600);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover:not(.active) { color: var(--dd-purple); }
+.tab-btn.active {
+  color: var(--dd-purple);
+  border-bottom-color: var(--dd-purple);
+  font-weight: 600;
+}
+
 /* ── Main layout ──────────────────────────────────────── */
 .app-main {
   max-width: 1100px;
@@ -465,6 +492,77 @@
 .availability-limited-availability {
   background: rgba(255, 59, 48, 0.1);
   color: #c0392b;
+}
+
+/* ── Confluence tab ───────────────────────────────────── */
+.confluence-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Credentials section */
+.credentials-section {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--dd-gray-200);
+  padding: 1.25rem 1.5rem;
+}
+.creds-connected {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.creds-status {
+  font-size: 0.9rem;
+  color: var(--dd-gray-600);
+  flex: 1;
+}
+.creds-status strong { color: var(--dd-gray-900); }
+.creds-connected-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--dd-purple);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.btn-link:hover { opacity: 0.75; }
+.btn-link-danger { color: var(--dd-error); }
+
+.creds-form-header {
+  margin-bottom: 1rem;
+}
+.creds-form-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.creds-form-header p {
+  font-size: 0.85rem;
+  color: var(--dd-gray-600);
+  line-height: 1.5;
+}
+.creds-form-header a {
+  color: var(--dd-purple);
+}
+.creds-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+@media (max-width: 600px) {
+  .creds-fields { grid-template-columns: 1fr; }
+}
+.creds-actions {
+  display: flex;
+  gap: 0.75rem;
 }
 
 /* ── Empty state ──────────────────────────────────────── */

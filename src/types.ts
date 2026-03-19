@@ -26,3 +26,25 @@ export interface SearchResponse {
   totalUrls: number
   error?: string
 }
+
+export interface ConfluenceResult {
+  product: string
+  searchTerm: string
+  space: string
+  title: string
+  url: string
+}
+
+export interface ConfluenceSearchRequest {
+  email: string
+  apiToken: string
+  entries: Array<{
+    product: string
+    searchTerms: string[]
+  }>
+}
+
+export interface ConfluenceSearchResponse {
+  results: ConfluenceResult[]
+  error?: string
+}

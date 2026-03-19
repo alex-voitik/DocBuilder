@@ -3,9 +3,13 @@ import type { ProductEntry, DocResult, SearchResponse } from './types'
 import ProductEntryCard from './components/ProductEntryCard'
 import CategoryFilter from './components/CategoryFilter'
 import ResultsTable from './components/ResultsTable'
+import ConfluenceTab from './components/ConfluenceTab'
 import './App.css'
 
+type Tab = 'datadog' | 'confluence'
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('datadog')
   const [entries, setEntries] = useState<ProductEntry[]>([
     { id: '1', product: '', searchTerms: [] },
   ])
@@ -80,6 +84,26 @@ export default function App() {
         </div>
       </header>
 
+      <nav className="tab-nav">
+        <button
+          className={`tab-btn${activeTab === 'datadog' ? ' active' : ''}`}
+          onClick={() => setActiveTab('datadog')}
+        >
+          Datadog Docs
+        </button>
+        <button
+          className={`tab-btn${activeTab === 'confluence' ? ' active' : ''}`}
+          onClick={() => setActiveTab('confluence')}
+        >
+          Confluence
+        </button>
+      </nav>
+
+      {activeTab === 'confluence' ? (
+        <main className="app-main">
+          <ConfluenceTab />
+        </main>
+      ) : (
       <main className="app-main">
         <section className="products-section">
           <div className="section-header">
@@ -155,6 +179,7 @@ export default function App() {
           </div>
         )}
       </main>
+      )}
     </div>
   )
 }
