@@ -20,7 +20,8 @@ app.post('/api/search', async (req, res) => {
   }
 
   try {
-    const { results, totalFound } = await searchDocs(entries)
+    const depth = typeof body.depth === 'number' && body.depth >= 1 ? body.depth : undefined
+    const { results, totalFound } = await searchDocs(entries, depth)
     res.json({ results, totalUrls: totalFound })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'

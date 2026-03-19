@@ -215,6 +215,32 @@
 
 .generate-btn { padding: 0.75rem 2rem; font-size: 1rem; align-self: flex-start; }
 
+/* ── Search options (depth toggle) ───────────────────── */
+.search-options {
+  display: flex;
+  align-items: center;
+}
+.depth-toggle {
+  display: flex;
+  border: 1.5px solid var(--dd-gray-200);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.depth-btn {
+  background: white;
+  color: var(--dd-gray-600);
+  border: none;
+  border-right: 1.5px solid var(--dd-gray-200);
+  padding: 0.4rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.depth-btn:last-child { border-right: none; }
+.depth-btn:hover:not(.active) { background: rgba(99, 44, 166, 0.05); color: var(--dd-purple); }
+.depth-btn.active { background: var(--dd-purple); color: white; font-weight: 600; }
+
 /* ── Error banner ─────────────────────────────────────── */
 .error-banner {
   background: #FEF0F0;
@@ -363,7 +389,8 @@
   color: var(--dd-gray-400);
   margin-top: 0.2rem;
 }
-.export-btn { font-size: 0.875rem; padding: 0.55rem 1.1rem; flex-shrink: 0; }
+.results-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+.export-btn { font-size: 0.875rem; padding: 0.55rem 1.1rem; }
 
 /* ── Results table ────────────────────────────────────── */
 .table-wrapper {
@@ -412,6 +439,32 @@
   font-size: 0.8rem;
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* ── Availability badges ──────────────────────────────── */
+.availability-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.availability-preview {
+  background: rgba(255, 149, 0, 0.12);
+  color: #b85c00;
+}
+.availability-beta {
+  background: rgba(0, 122, 204, 0.1);
+  color: #0057a3;
+}
+.availability-private-beta {
+  background: rgba(99, 44, 166, 0.1);
+  color: var(--dd-purple-dark);
+}
+.availability-limited-availability {
+  background: rgba(255, 59, 48, 0.1);
+  color: #c0392b;
 }
 
 /* ── Empty state ──────────────────────────────────────── */

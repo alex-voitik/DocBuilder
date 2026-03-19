@@ -1,8 +1,8 @@
 import type { DocResult } from '../types'
 
 export function exportToCsv(results: DocResult[], filename = 'datadog-docs.csv') {
-  const headers = ['Product', 'Search Parameter', 'Category', 'Page Title', 'Documentation URL']
-  const rows = results.map(r => [r.product, r.searchTerm, r.category, r.title, r.url])
+  const headers = ['Product', 'Search Parameter', 'Category', 'Page Title', 'Documentation URL', 'Availability']
+  const rows = results.map(r => [r.product, r.searchTerm, r.category, r.title, r.url, r.availability])
 
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))

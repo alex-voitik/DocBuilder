@@ -10,6 +10,7 @@ export interface DocResult {
   category: string
   title: string
   url: string
+  availability: string
 }
 
 export interface SearchRequest {
@@ -17,6 +18,7 @@ export interface SearchRequest {
     product: string
     searchTerms: string[]
   }>
+  depth?: number
 }
 
 export interface SearchResponse {

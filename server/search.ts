@@ -28,13 +28,13 @@ interface TSResponse {
 
 // ── Core search ───────────────────────────────────────────────────────────────
 
-async function tsSearch(query: string, perPage: number, page = 1): Promise<TSResponse> {
+async function tsSearch(query: string, perPage: number, page = 1, queryBy = 'title,tags'): Promise<TSResponse> {
   const { data } = await axios.get<TSResponse>(SEARCH_URL, {
     timeout: 12_000,
     headers: { 'X-TYPESENSE-API-KEY': TYPESENSE_API_KEY },
     params: {
       q: query,
-      query_by: 'title,tags,content',
+      query_by: queryBy,
       filter_by: 'language:en',
       per_page: perPage,
       page,
@@ -92,13 +92,13 @@ async function fetchOverviewAndSetup(product: string): Promise<TSDocument[]> {
 
 /** Fetch up to `maxPages` pages of results for a query. */
 async function fetchAllPages(query: string, perPage = 250, maxPages = 4): Promise<TSDocument[]> {
-  const first = await tsSearch(query, perPage, 1)
+  const first = await tsSearch(query, perPage, 1, 'title,tags,content')
   const docs: TSDocument[] = first.hits.map(h => h.document)
 
   const totalPages = Math.min(Math.ceil(first.found / perPage), maxPages)
   if (totalPages > 1) {
     const rest = await Promise.allSettled(
-      Array.from({ length: totalPages - 1 }, (_, i) => tsSearch(query, perPage, i + 2))
+      Array.from({ length: totalPages - 1 }, (_, i) => tsSearch(query, perPage, i + 2, 'title,tags,content'))
     )
     for (const r of rest) {
       if (r.status === 'fulfilled') docs.push(...r.value.hits.map(h => h.document))
@@ -114,16 +114,60 @@ export interface SearchEntry {
   searchTerms: string[]
 }
 
+// ── Availability detection ─────────────────────────────────────────────────────
+
+// Matches the "Join the Preview" callout-card box specifically.
+// The card HTML is: <div class="card callout-card ..."> ... Join the Preview ... </div>
+// We look for callout-card followed by "join the preview" within 600 chars.
+const CALLOUT_PREVIEW_RE = /callout-card[^]{0,600}join\s+the\s+preview/i
+
+async function checkAvailability(url: string): Promise<string> {
+  try {
+    const { data } = await axios.get<string>(url, {
+      timeout: 5_000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; DocBuilder/1.0)' },
+      responseType: 'text',
+    })
+    const html: string = typeof data === 'string' ? data : ''
+    if (CALLOUT_PREVIEW_RE.test(html)) return 'Preview'
+    return ''
+  } catch {
+    return ''
+  }
+}
+
+async function fetchAvailability(urls: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(urls)]
+  const result = new Map<string, string>()
+  const CONCURRENCY = 10
+
+  let i = 0
+  async function worker() {
+    while (i < unique.length) {
+      const url = unique[i++]
+      result.set(url, await checkAvailability(url))
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, unique.length) }, worker))
+  return result
+}
+
+function urlDepth(url: string): number {
+  return url.replace('https://docs.datadoghq.com', '').replace(/^\/|\/$/g, '').split('/').filter(Boolean).length
+}
+
 export async function searchDocs(
-  entries: SearchEntry[]
+  entries: SearchEntry[],
+  depth?: number
 ): Promise<{ results: DocResult[]; totalFound: number }> {
   const results: DocResult[] = []
   const seen = new Set<string>()
   let totalFound = 0
 
-  const push = (r: DocResult) => {
+  const push = (r: Omit<DocResult, 'availability'>) => {
+    if (depth !== undefined && urlDepth(r.url) > depth) return
     const key = `${r.product}|${r.searchTerm}|${r.url}`
-    if (!seen.has(key)) { seen.add(key); results.push(r) }
+    if (!seen.has(key)) { seen.add(key); results.push({ ...r, availability: '' }) }
   }
 
   // Separate entries into "all docs" vs "term-specific + overview"
@@ -221,6 +265,10 @@ export async function searchDocs(
       push({ product: job.product, searchTerm: job.searchTerm, category: categoryFromUrl(url), title: doc.title ?? url, url })
     }
   }
+
+  // Fetch availability for all result URLs concurrently
+  const availMap = await fetchAvailability(results.map(r => r.url))
+  for (const r of results) r.availability = availMap.get(r.url) ?? ''
 
   return { results, totalFound }
 }

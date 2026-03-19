@@ -11,6 +11,7 @@ export default function App() {
   ])
   const [results, setResults] = useState<DocResult[]>([])
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set())
+  const [sourceOnly, setSourceOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [totalUrls, setTotalUrls] = useState<number | null>(null)
@@ -53,7 +54,10 @@ export default function App() {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: valid.map(e => ({ product: e.product, searchTerms: e.searchTerms })) }),
+        body: JSON.stringify({
+          entries: valid.map(e => ({ product: e.product, searchTerms: e.searchTerms })),
+          ...(sourceOnly && { depth: 2 }),
+        }),
       })
       const data: SearchResponse = await res.json()
       if (!res.ok) throw new Error(data.error || 'Search failed')
@@ -99,6 +103,23 @@ export default function App() {
             + Add Product
           </button>
         </section>
+
+        <div className="search-options">
+          <div className="depth-toggle">
+            <button
+              className={`depth-btn${!sourceOnly ? ' active' : ''}`}
+              onClick={() => setSourceOnly(false)}
+            >
+              All
+            </button>
+            <button
+              className={`depth-btn${sourceOnly ? ' active' : ''}`}
+              onClick={() => setSourceOnly(true)}
+            >
+              Source Only
+            </button>
+          </div>
+        </div>
 
         {error && <div className="error-banner">{error}</div>}
 
