@@ -64,70 +64,32 @@ async function cfSearch(credentials: string, query: string, limit = 25): Promise
 export async function searchConfluence(
   email: string,
   apiToken: string,
-  entries: Array<{ product: string; searchTerms: string[] }>
+  query: string
 ): Promise<ConfluenceResult[]> {
   const credentials = Buffer.from(`${email}:${apiToken}`).toString('base64')
 
-  type Job = { product: string; searchTerm: string; query: string }
-  const jobs: Job[] = entries.flatMap(entry => {
-    if (entry.searchTerms.length === 0) {
-      return [{ product: entry.product, searchTerm: '', query: entry.product }]
-    }
-    return entry.searchTerms.map(term => ({
-      product: entry.product,
-      searchTerm: term,
-      query: `${entry.product} ${term}`,
-    }))
-  })
-
-  const settled = await Promise.allSettled(
-    jobs.map(job => cfSearch(credentials, job.query).then(pages => ({ job, pages })))
-  )
-
-  // Propagate auth errors immediately; surface first error if all queries failed
-  const errors = settled.filter(r => r.status === 'rejected') as PromiseRejectedResult[]
-  for (const r of errors) {
-    const msg: string = r.reason?.message ?? ''
-    if (msg.includes('Invalid Confluence') || msg.includes('Access denied')) {
-      throw r.reason as Error
-    }
-  }
-  if (errors.length === settled.length && settled.length > 0) {
-    throw errors[0].reason as Error
+  let pages: ConfluencePage[]
+  try {
+    pages = await cfSearch(credentials, query)
+  } catch (err) {
+    throw err
   }
 
-  const seen = new Set<string>()
   type Intermediate = ConfluenceResult & { contentId: string }
-  const intermediate: Intermediate[] = []
-
-  for (const r of settled) {
-    if (r.status !== 'fulfilled') continue
-    const { job, pages } = r.value
-    for (const page of pages) {
-      const url = `https://datadoghq.atlassian.net/wiki${page._links.webui}`
-      const key = `${job.product}|${url}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      intermediate.push({
-        contentId: page.id,
-        product: job.product,
-        searchTerm: job.searchTerm,
-        space: page.space?.name ?? page.space?.key ?? '',
-        title: page.title,
-        url,
-        views: 0,
-      })
-    }
-  }
+  const intermediate: Intermediate[] = pages.map(page => ({
+    contentId: page.id,
+    space: page.space?.name ?? page.space?.key ?? '',
+    title: page.title,
+    url: `https://datadoghq.atlassian.net/wiki${page._links.webui}`,
+    views: 0,
+  }))
 
   // Fetch view counts in parallel and sort most-viewed first
   const viewCounts = await Promise.all(
     intermediate.map(r => fetchViewCount(credentials, r.contentId))
   )
 
-  const results: ConfluenceResult[] = intermediate
+  return intermediate
     .map(({ contentId: _, ...r }, i) => ({ ...r, views: viewCounts[i] }))
     .sort((a, b) => b.views - a.views)
-
-  return results
 }

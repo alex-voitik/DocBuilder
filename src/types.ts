@@ -28,8 +28,6 @@ export interface SearchResponse {
 }
 
 export interface ConfluenceResult {
-  product: string
-  searchTerm: string
   space: string
   title: string
   url: string
@@ -39,10 +37,7 @@ export interface ConfluenceResult {
 export interface ConfluenceSearchRequest {
   email: string
   apiToken: string
-  entries: Array<{
-    product: string
-    searchTerms: string[]
-  }>
+  query: string
 }
 
 export interface ConfluenceSearchResponse {

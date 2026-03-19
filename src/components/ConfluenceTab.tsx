@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import type { ProductEntry, ConfluenceResult, ConfluenceSearchResponse } from '../types'
-import ProductEntryCard from './ProductEntryCard'
+import type { ConfluenceResult, ConfluenceSearchResponse } from '../types'
 
 const CREDS_KEY = 'confluence_credentials'
 
@@ -19,8 +18,8 @@ function loadCredentials(): Credentials | null {
 }
 
 function exportConfluenceCsv(results: ConfluenceResult[]) {
-  const headers = ['Product', 'Search Term', 'Space', 'Page Title', 'URL', 'Views']
-  const rows = results.map(r => [r.product, r.searchTerm, r.space, r.title, r.url, String(r.views)])
+  const headers = ['Space', 'Page Title', 'URL', 'Views']
+  const rows = results.map(r => [r.space, r.title, r.url, String(r.views)])
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n')
@@ -36,8 +35,8 @@ function exportConfluenceCsv(results: ConfluenceResult[]) {
 }
 
 function copyForSheets(results: ConfluenceResult[]) {
-  const headers = ['Product', 'Search Term', 'Space', 'Page Title', 'URL', 'Views']
-  const rows = results.map(r => [r.product, r.searchTerm, r.space, r.title, r.url, String(r.views)])
+  const headers = ['Space', 'Page Title', 'URL', 'Views']
+  const rows = results.map(r => [r.space, r.title, r.url, String(r.views)])
   const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n')
   navigator.clipboard.writeText(tsv)
 }
@@ -48,9 +47,7 @@ export default function ConfluenceTab() {
   const [emailInput, setEmailInput] = useState('')
   const [tokenInput, setTokenInput] = useState('')
 
-  const [entries, setEntries] = useState<ProductEntry[]>([
-    { id: '1', product: '', searchTerms: [] },
-  ])
+  const [query, setQuery] = useState('')
   const [results, setResults] = useState<ConfluenceResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,23 +79,8 @@ export default function ConfluenceTab() {
     setSearched(false)
   }
 
-  const addEntry = () =>
-    setEntries(prev => [...prev, { id: Date.now().toString(), product: '', searchTerms: [] }])
-
-  const removeEntry = (id: string) =>
-    setEntries(prev => prev.filter(e => e.id !== id))
-
-  const updateEntry = (id: string, updates: Partial<ProductEntry>) =>
-    setEntries(prev => prev.map(e => (e.id === id ? { ...e, ...updates } : e)))
-
   const handleSearch = async () => {
-    if (!creds) return
-    const valid = entries.filter(e => e.product.trim())
-    if (valid.length === 0) {
-      setError('Please enter at least one product.')
-      return
-    }
-
+    if (!creds || !query.trim()) return
     setLoading(true)
     setError(null)
     setResults([])
@@ -108,11 +90,7 @@ export default function ConfluenceTab() {
       const res = await fetch('/api/confluence-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: creds.email,
-          apiToken: creds.apiToken,
-          entries: valid.map(e => ({ product: e.product, searchTerms: e.searchTerms })),
-        }),
+        body: JSON.stringify({ email: creds.email, apiToken: creds.apiToken, query: query.trim() }),
       })
       const data: ConfluenceSearchResponse = await res.json()
       if (!res.ok) {
@@ -161,7 +139,7 @@ export default function ConfluenceTab() {
                 >
                   Atlassian API token
                 </a>
-                . Credentials are stored in your browser only and never sent to any server other than Confluence.
+                . Credentials are stored in your browser only.
               </p>
             </div>
             <div className="creds-fields">
@@ -203,35 +181,29 @@ export default function ConfluenceTab() {
         )}
       </section>
 
-      {/* Search — only when connected */}
+      {/* Search bar — only when connected */}
       {creds && !editingCreds && (
         <>
-          <section className="products-section">
-            <div className="section-header">
-              <h2>Products</h2>
-              <span className="hint">Search Confluence for each product + term combination</span>
-            </div>
-            <div className="entries-list">
-              {entries.map((entry, index) => (
-                <ProductEntryCard
-                  key={entry.id}
-                  entry={entry}
-                  index={index}
-                  onUpdate={updates => updateEntry(entry.id, updates)}
-                  onRemove={entries.length > 1 ? () => removeEntry(entry.id) : undefined}
-                />
-              ))}
-            </div>
-            <button className="btn-secondary" onClick={addEntry}>
-              + Add Product
+          <div className="confluence-search-bar">
+            <input
+              type="text"
+              className="confluence-search-input"
+              placeholder="Search Confluence…"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+              disabled={loading}
+            />
+            <button
+              className="btn-primary"
+              onClick={handleSearch}
+              disabled={loading || !query.trim()}
+            >
+              {loading ? 'Searching…' : 'Search'}
             </button>
-          </section>
+          </div>
 
           {error && <div className="error-banner">{error}</div>}
-
-          <button className="btn-primary generate-btn" onClick={handleSearch} disabled={loading}>
-            {loading ? 'Searching Confluence…' : 'Search Confluence'}
-          </button>
 
           {loading && (
             <div className="loading-state">
@@ -244,9 +216,9 @@ export default function ConfluenceTab() {
             <section className="results-section">
               <div className="results-header">
                 <div>
-                  <h2>Confluence Results</h2>
+                  <h2>Results</h2>
                   <p className="results-meta">
-                    {results.length} page{results.length !== 1 ? 's' : ''} found
+                    {results.length} page{results.length !== 1 ? 's' : ''} found, sorted by views
                   </p>
                 </div>
                 <div className="results-actions">
@@ -262,8 +234,6 @@ export default function ConfluenceTab() {
                 <table className="results-table">
                   <thead>
                     <tr>
-                      <th>Product</th>
-                      <th>Search Term</th>
                       <th>Space</th>
                       <th>Page Title</th>
                       <th>URL</th>
@@ -273,8 +243,6 @@ export default function ConfluenceTab() {
                   <tbody>
                     {results.map((r, i) => (
                       <tr key={i}>
-                        <td><span className="product-badge">{r.product}</span></td>
-                        <td>{r.searchTerm || <em style={{ color: 'var(--dd-gray-400)' }}>—</em>}</td>
                         <td>{r.space}</td>
                         <td>{r.title}</td>
                         <td>
@@ -293,7 +261,7 @@ export default function ConfluenceTab() {
 
           {!loading && searched && results.length === 0 && (
             <div className="empty-state">
-              No Confluence pages found. Try different products or search terms.
+              No Confluence pages found for "{query}".
             </div>
           )}
         </>

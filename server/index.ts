@@ -39,19 +39,13 @@ app.post('/api/confluence-search', async (req, res) => {
     return
   }
 
-  if (!body?.entries || !Array.isArray(body.entries)) {
-    res.status(400).json({ error: 'Request body must contain an "entries" array.' })
-    return
-  }
-
-  const entries = body.entries.filter(e => typeof e.product === 'string' && e.product.trim())
-  if (entries.length === 0) {
-    res.status(400).json({ error: 'No valid product entries provided.' })
+  if (!body?.query?.trim()) {
+    res.status(400).json({ error: 'Request body must contain a "query" string.' })
     return
   }
 
   try {
-    const results = await searchConfluence(body.email, body.apiToken, entries)
+    const results = await searchConfluence(body.email, body.apiToken, body.query.trim())
     res.json({ results })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'

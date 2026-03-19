@@ -565,6 +565,28 @@
   gap: 0.75rem;
 }
 
+/* Confluence search bar */
+.confluence-search-bar {
+  display: flex;
+  gap: 0.75rem;
+}
+.confluence-search-input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid var(--dd-gray-200);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: var(--dd-gray-900);
+  background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.confluence-search-input:focus {
+  outline: none;
+  border-color: var(--dd-purple);
+  box-shadow: 0 0 0 3px rgba(99, 44, 166, 0.12);
+}
+.confluence-search-input:disabled { opacity: 0.6; }
+
 /* ── Empty state ──────────────────────────────────────── */
 .empty-state {
   text-align: center;

@@ -30,18 +30,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return
   }
 
-  const entries = (body?.entries ?? []).filter(
-    e => typeof e.product === 'string' && e.product.trim()
-  )
-
-  if (entries.length === 0) {
+  if (!body?.query?.trim()) {
     res.writeHead(400, { 'Content-Type': 'application/json' })
-    res.end(JSON.stringify({ error: 'No valid product entries provided.' }))
+    res.end(JSON.stringify({ error: 'Request body must contain a "query" string.' }))
     return
   }
 
   try {
-    const results = await searchConfluence(body.email, body.apiToken, entries)
+    const results = await searchConfluence(body.email, body.apiToken, body.query.trim())
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ results }))
   } catch (err: unknown) {
