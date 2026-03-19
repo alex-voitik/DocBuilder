@@ -31,7 +31,6 @@ export interface ConfluenceResult {
   space: string
   title: string
   url: string
-  views: number
 }
 
 export interface ConfluenceSearchRequest {

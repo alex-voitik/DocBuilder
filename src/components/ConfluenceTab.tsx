@@ -18,8 +18,8 @@ function loadCredentials(): Credentials | null {
 }
 
 function exportConfluenceCsv(results: ConfluenceResult[]) {
-  const headers = ['Space', 'Page Title', 'URL', 'Views']
-  const rows = results.map(r => [r.space, r.title, r.url, String(r.views)])
+  const headers = ['Space', 'Page Title', 'URL']
+  const rows = results.map(r => [r.space, r.title, r.url])
   const csvContent = [headers, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n')
@@ -35,8 +35,8 @@ function exportConfluenceCsv(results: ConfluenceResult[]) {
 }
 
 function copyForSheets(results: ConfluenceResult[]) {
-  const headers = ['Space', 'Page Title', 'URL', 'Views']
-  const rows = results.map(r => [r.space, r.title, r.url, String(r.views)])
+  const headers = ['Space', 'Page Title', 'URL']
+  const rows = results.map(r => [r.space, r.title, r.url])
   const tsv = [headers, ...rows].map(row => row.join('\t')).join('\n')
   navigator.clipboard.writeText(tsv)
 }
@@ -218,7 +218,7 @@ export default function ConfluenceTab() {
                 <div>
                   <h2>Results</h2>
                   <p className="results-meta">
-                    {results.length} page{results.length !== 1 ? 's' : ''} found, sorted by views
+                    {results.length} page{results.length !== 1 ? 's' : ''} found
                   </p>
                 </div>
                 <div className="results-actions">
@@ -237,7 +237,6 @@ export default function ConfluenceTab() {
                       <th>Space</th>
                       <th>Page Title</th>
                       <th>URL</th>
-                      <th>Views</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,7 +249,6 @@ export default function ConfluenceTab() {
                             {r.url}
                           </a>
                         </td>
-                        <td>{r.views > 0 ? r.views.toLocaleString() : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
