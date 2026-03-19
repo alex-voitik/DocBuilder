@@ -276,28 +276,69 @@
   padding: 0.3rem 0.7rem;
   font-size: 0.8rem;
 }
-.filter-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.25rem;
-  max-height: 180px;
+
+/* Tree */
+.filter-tree {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0;
+  max-height: 260px;
   overflow-y: auto;
-  padding-right: 0.25rem;
+  border: 1px solid var(--dd-gray-100);
+  border-radius: 6px;
+  padding: 0.35rem 0;
 }
+.tree-node { display: flex; flex-direction: column; }
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+.tree-row:hover { background: var(--dd-gray-50); }
+.tree-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.65rem;
+  color: var(--dd-gray-400);
+  padding: 0 0.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.tree-expand-btn:hover { color: var(--dd-purple); }
 .filter-item {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--dd-gray-900);
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 .filter-item input[type='checkbox'] {
   accent-color: var(--dd-purple);
   cursor: pointer;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.tree-count {
+  font-size: 0.72rem;
+  color: var(--dd-gray-400);
+  background: var(--dd-gray-100);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 /* ── Results section ──────────────────────────────────── */
