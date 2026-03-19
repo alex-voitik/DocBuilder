@@ -52,6 +52,31 @@ function urlFromDoc(doc: TSDocument): string | null {
   return raw.split('#')[0].replace(/\/$/, '') + '/'
 }
 
+/**
+ * Returns a small set (≤5) of top-level overview/setup pages for a product.
+ * Strategy: search for the product name, strip anchor fragments, then keep only
+ * shallow URL paths (depth ≤ 2) — those are the landing/overview pages.
+ */
+async function fetchOverviewAndSetup(product: string): Promise<TSDocument[]> {
+  const res = await tsSearch(product, 50)
+
+  const seen = new Set<string>()
+  const result: TSDocument[] = []
+
+  for (const hit of res.hits) {
+    const url = urlFromDoc(hit.document)
+    if (!url || seen.has(url)) continue
+
+    const depth = url.replace('https://docs.datadoghq.com', '').replace(/^\/|\/$/g, '').split('/').filter(Boolean).length
+    if (depth > 2) continue
+
+    seen.add(url)
+    result.push(hit.document)
+    if (result.length === 5) break
+  }
+  return result
+}
+
 /** Fetch up to `maxPages` pages of results for a query. */
 async function fetchAllPages(query: string, perPage = 250, maxPages = 4): Promise<TSDocument[]> {
   const first = await tsSearch(query, perPage, 1)
@@ -88,31 +113,52 @@ export async function searchDocs(
     if (!seen.has(key)) { seen.add(key); results.push(r) }
   }
 
-  // Build all queries upfront so we can run them concurrently
+  // Separate entries into "all docs" vs "tech-specific + overview"
   type QueryJob = { product: string; techStack: string; query: string; allDocs: boolean }
   const jobs: QueryJob[] = []
+  const productsNeedingOverview = new Set<string>()
 
   for (const entry of entries) {
     const product = entry.product.trim()
     if (entry.techStacks.length === 0) {
       jobs.push({ product, techStack: 'All', query: product, allDocs: true })
     } else {
+      productsNeedingOverview.add(product)
       for (const tech of entry.techStacks) {
         jobs.push({ product, techStack: tech, query: `${product} ${tech}`, allDocs: false })
       }
     }
   }
 
-  // Run all jobs concurrently
-  const settled = await Promise.allSettled(
-    jobs.map(async job => {
-      const docs = job.allDocs
-        ? await fetchAllPages(job.query, 250, 4)
-        : (await tsSearch(job.query, 100)).hits.map(h => h.document)
-      return { job, docs }
-    })
-  )
+  // Run tech-stack queries and overview queries concurrently
+  const [settled, overviewResults] = await Promise.all([
+    Promise.allSettled(
+      jobs.map(async job => {
+        const docs = job.allDocs
+          ? await fetchAllPages(job.query, 250, 4)
+          : (await tsSearch(job.query, 100)).hits.map(h => h.document)
+        return { job, docs }
+      })
+    ),
+    Promise.allSettled(
+      [...productsNeedingOverview].map(async product => ({
+        product,
+        docs: await fetchOverviewAndSetup(product),
+      }))
+    ),
+  ])
 
+  // Add overview & setup results first (once per product, before tech-specific rows)
+  for (const r of overviewResults) {
+    if (r.status === 'rejected') continue
+    for (const doc of r.value.docs) {
+      const url = urlFromDoc(doc)
+      if (!url) continue
+      push({ product: r.value.product, techStack: 'Overview & Setup', title: doc.title ?? url, url })
+    }
+  }
+
+  // Add tech-specific results
   for (const result of settled) {
     if (result.status === 'rejected') {
       console.warn('[search] Query failed:', result.reason?.message)
