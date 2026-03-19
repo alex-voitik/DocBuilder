@@ -32,8 +32,7 @@ async function fetchViewCount(credentials: string, contentId: string): Promise<n
   }
 }
 
-async function cfSearch(credentials: string, query: string, limit = 25): Promise<ConfluencePage[]> {
-  const cql = `type = page AND text ~ "${query.replace(/"/g, '\\"')}"`
+async function cfSearch(credentials: string, cql: string, limit = 50): Promise<ConfluencePage[]> {
   const url = `${CONFLUENCE_BASE}/content/search?cql=${encodeURIComponent(cql)}&limit=${limit}&expand=space`
 
   const res = await fetch(url, {
@@ -69,11 +68,21 @@ export async function searchConfluence(
 ): Promise<ConfluenceResult[]> {
   const credentials = Buffer.from(`${email}:${apiToken}`).toString('base64')
 
-  let pages: ConfluencePage[]
-  try {
-    pages = await cfSearch(credentials, query)
-  } catch (err) {
-    throw err
+  const q = query.replace(/"/g, '\\"')
+  // Run title and text searches in parallel; title matches are more relevant
+  const [titlePages, textPages] = await Promise.all([
+    cfSearch(credentials, `type = page AND title ~ "${q}"`),
+    cfSearch(credentials, `type = page AND text ~ "${q}"`),
+  ])
+
+  // Merge: title matches first, then text-only matches (deduplicated by id)
+  const seen = new Set<string>()
+  const pages: ConfluencePage[] = []
+  for (const page of [...titlePages, ...textPages]) {
+    if (!seen.has(page.id)) {
+      seen.add(page.id)
+      pages.push(page)
+    }
   }
 
   type Intermediate = ConfluenceResult & { contentId: string }
