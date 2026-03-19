@@ -47,6 +47,12 @@ async function cfSearch(credentials: string, cql: string, limit = 50): Promise<C
   return data.results ?? []
 }
 
+function buildTitleCql(query: string): string {
+  const words = query.trim().split(/\s+/)
+  const clauses = words.map(w => `title ~ "${w.replace(/"/g, '\\"')}"`)
+  return `type = page AND ${clauses.join(' AND ')}`
+}
+
 export async function searchConfluence(
   email: string,
   apiToken: string,
@@ -54,21 +60,13 @@ export async function searchConfluence(
 ): Promise<ConfluenceResult[]> {
   const credentials = Buffer.from(`${email}:${apiToken}`).toString('base64')
 
-  const q = query.replace(/"/g, '\\"')
-  // Run title and text searches in parallel; title matches are more relevant
-  const [titlePages, textPages] = await Promise.all([
-    cfSearch(credentials, `type = page AND title ~ "${q}"`),
-    cfSearch(credentials, `type = page AND text ~ "${q}"`),
-  ])
+  // Primary: title search — each word must appear in the title (any order)
+  let pages = await cfSearch(credentials, buildTitleCql(query))
 
-  // Merge: title matches first (in Confluence's relevance order), then text-only matches
-  const seen = new Set<string>()
-  const pages: ConfluencePage[] = []
-  for (const page of [...titlePages, ...textPages]) {
-    if (!seen.has(page.id)) {
-      seen.add(page.id)
-      pages.push(page)
-    }
+  // Fallback: if no title matches, run a full-text search
+  if (pages.length === 0) {
+    const q = query.replace(/"/g, '\\"')
+    pages = await cfSearch(credentials, `type = page AND text ~ "${q}"`)
   }
 
   return pages.map(page => ({
