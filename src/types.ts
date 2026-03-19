@@ -34,9 +34,13 @@ export interface ConfluenceResult {
 }
 
 export interface ConfluenceSearchRequest {
-  email: string
-  apiToken: string
   query: string
+}
+
+export interface AtlassianUser {
+  loggedIn: boolean
+  email?: string
+  displayName?: string
 }
 
 export interface ConfluenceSearchResponse {

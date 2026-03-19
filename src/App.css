@@ -501,28 +501,6 @@
   gap: 1.5rem;
 }
 
-/* Credentials section */
-.credentials-section {
-  background: white;
-  border-radius: 8px;
-  border: 1px solid var(--dd-gray-200);
-  padding: 1.25rem 1.5rem;
-}
-.creds-connected {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.creds-status {
-  font-size: 0.9rem;
-  color: var(--dd-gray-600);
-  flex: 1;
-}
-.creds-status strong { color: var(--dd-gray-900); }
-.creds-connected-actions {
-  display: flex;
-  gap: 0.75rem;
-}
 .btn-link {
   background: none;
   border: none;
@@ -535,35 +513,35 @@
 .btn-link:hover { opacity: 0.75; }
 .btn-link-danger { color: var(--dd-error); }
 
-.creds-form-header {
-  margin-bottom: 1rem;
-}
-.creds-form-header h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.35rem;
-}
-.creds-form-header p {
-  font-size: 0.85rem;
-  color: var(--dd-gray-600);
-  line-height: 1.5;
-}
-.creds-form-header a {
-  color: var(--dd-purple);
-}
-.creds-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-@media (max-width: 600px) {
-  .creds-fields { grid-template-columns: 1fr; }
-}
-.creds-actions {
+/* Confluence login */
+.confluence-login {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--dd-gray-200);
+  padding: 2.5rem 2rem;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 0.75rem;
 }
+.confluence-login h2 { font-size: 1.1rem; font-weight: 600; }
+.confluence-login p { font-size: 0.9rem; color: var(--dd-gray-600); }
+.btn-atlassian { margin-top: 0.5rem; }
+
+/* Confluence user bar */
+.confluence-user-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--dd-gray-600);
+  background: white;
+  border: 1px solid var(--dd-gray-200);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+}
+.confluence-user-bar strong { color: var(--dd-gray-900); }
+.confluence-user-bar .btn-link { margin-left: auto; }
 
 /* Confluence search bar */
 .confluence-search-bar {

@@ -16,25 +16,22 @@ interface ConfluenceApiResponse {
   totalSize: number
 }
 
-const CONFLUENCE_BASE = 'https://datadoghq.atlassian.net/wiki/rest/api'
-
-async function cfSearch(credentials: string, cql: string, limit = 50): Promise<ConfluencePage[]> {
-  const url = `${CONFLUENCE_BASE}/content/search?cql=${encodeURIComponent(cql)}&limit=${limit}&expand=space`
+async function cfSearch(
+  accessToken: string,
+  cloudId: string,
+  cql: string,
+  limit = 50
+): Promise<ConfluencePage[]> {
+  const base = `https://api.atlassian.com/ex/confluence/${cloudId}/rest/api`
+  const url = `${base}/content/search?cql=${encodeURIComponent(cql)}&limit=${limit}&expand=space`
 
   const res = await fetch(url, {
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      Accept: 'application/json',
-    },
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   })
 
   if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('Invalid Confluence credentials. Check your email and API token.')
-    }
-    if (res.status === 403) {
-      throw new Error('Access denied. Ensure your API token has Confluence access.')
-    }
+    if (res.status === 401) throw new Error('Atlassian session expired. Please log in again.')
+    if (res.status === 403) throw new Error('Access denied to Confluence.')
     let detail = res.statusText
     try {
       const body = await res.json() as { message?: string }
@@ -54,24 +51,23 @@ function buildTitleCql(query: string): string {
 }
 
 export async function searchConfluence(
-  email: string,
-  apiToken: string,
+  accessToken: string,
+  cloudId: string,
+  siteUrl: string,
   query: string
 ): Promise<ConfluenceResult[]> {
-  const credentials = Buffer.from(`${email}:${apiToken}`).toString('base64')
-
   // Primary: title search — each word must appear in the title (any order)
-  let pages = await cfSearch(credentials, buildTitleCql(query))
+  let pages = await cfSearch(accessToken, cloudId, buildTitleCql(query))
 
-  // Fallback: if no title matches, run a full-text search
+  // Fallback: full-text search if no title matches
   if (pages.length === 0) {
     const q = query.replace(/"/g, '\\"')
-    pages = await cfSearch(credentials, `type = page AND text ~ "${q}"`)
+    pages = await cfSearch(accessToken, cloudId, `type = page AND text ~ "${q}"`)
   }
 
   return pages.map(page => ({
     space: page.space?.name ?? page.space?.key ?? '',
     title: page.title,
-    url: `https://datadoghq.atlassian.net/wiki${page._links.webui}`,
+    url: `${siteUrl}/wiki${page._links.webui}`,
   }))
 }

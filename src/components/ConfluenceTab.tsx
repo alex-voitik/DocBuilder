@@ -1,21 +1,5 @@
-import { useState } from 'react'
-import type { ConfluenceResult, ConfluenceSearchResponse } from '../types'
-
-const CREDS_KEY = 'confluence_credentials'
-
-interface Credentials {
-  email: string
-  apiToken: string
-}
-
-function loadCredentials(): Credentials | null {
-  try {
-    const raw = sessionStorage.getItem(CREDS_KEY)
-    return raw ? (JSON.parse(raw) as Credentials) : null
-  } catch {
-    return null
-  }
-}
+import { useState, useEffect } from 'react'
+import type { ConfluenceResult, ConfluenceSearchResponse, AtlassianUser } from '../types'
 
 function exportConfluenceCsv(results: ConfluenceResult[]) {
   const headers = ['Space', 'Page Title', 'URL']
@@ -42,11 +26,7 @@ function copyForSheets(results: ConfluenceResult[]) {
 }
 
 export default function ConfluenceTab() {
-  const [creds, setCreds] = useState<Credentials | null>(loadCredentials)
-  const [editingCreds, setEditingCreds] = useState<boolean>(() => !loadCredentials())
-  const [emailInput, setEmailInput] = useState('')
-  const [tokenInput, setTokenInput] = useState('')
-
+  const [user, setUser] = useState<AtlassianUser | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ConfluenceResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -54,33 +34,34 @@ export default function ConfluenceTab() {
   const [searched, setSearched] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const saveCreds = () => {
-    if (!emailInput.trim() || !tokenInput.trim()) return
-    const newCreds = { email: emailInput.trim(), apiToken: tokenInput.trim() }
-    sessionStorage.setItem(CREDS_KEY, JSON.stringify(newCreds))
-    setCreds(newCreds)
-    setEditingCreds(false)
-    setTokenInput('')
+  // Check login state on mount + handle error param from OAuth redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const oauthError = params.get('error')
+    if (oauthError) {
+      setError(`Login failed: ${oauthError}`)
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then((data: AtlassianUser) => setUser(data))
+      .catch(() => setUser({ loggedIn: false }))
+  }, [])
+
+  const handleLogin = () => {
+    window.location.href = '/api/auth/atlassian'
   }
 
-  const startEditing = () => {
-    setEmailInput(creds?.email ?? '')
-    setTokenInput('')
-    setEditingCreds(true)
-  }
-
-  const clearCreds = () => {
-    sessionStorage.removeItem(CREDS_KEY)
-    setCreds(null)
-    setEditingCreds(true)
-    setEmailInput('')
-    setTokenInput('')
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    setUser({ loggedIn: false })
     setResults([])
     setSearched(false)
   }
 
   const handleSearch = async () => {
-    if (!creds || !query.trim()) return
+    if (!query.trim()) return
     setLoading(true)
     setError(null)
     setResults([])
@@ -90,11 +71,11 @@ export default function ConfluenceTab() {
       const res = await fetch('/api/confluence-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: creds.email, apiToken: creds.apiToken, query: query.trim() }),
+        body: JSON.stringify({ query: query.trim() }),
       })
       const data: ConfluenceSearchResponse = await res.json()
       if (!res.ok) {
-        if (res.status === 401) clearCreds()
+        if (res.status === 401) setUser({ loggedIn: false })
         throw new Error(data.error ?? 'Confluence search failed')
       }
       setResults(data.results)
@@ -112,157 +93,109 @@ export default function ConfluenceTab() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // Still checking auth state
+  if (user === null) {
+    return (
+      <div className="confluence-tab">
+        <div className="loading-state">
+          <div className="spinner" />
+          <span>Checking login status…</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Not logged in
+  if (!user.loggedIn) {
+    return (
+      <div className="confluence-tab">
+        <section className="confluence-login">
+          <h2>Connect to Confluence</h2>
+          <p>Log in with your Atlassian account to search internal Confluence pages.</p>
+          {error && <div className="error-banner">{error}</div>}
+          <button className="btn-primary btn-atlassian" onClick={handleLogin}>
+            Login with Atlassian
+          </button>
+        </section>
+      </div>
+    )
+  }
+
+  // Logged in
   return (
     <div className="confluence-tab">
-      {/* Credentials */}
-      <section className="credentials-section">
-        {!editingCreds && creds ? (
-          <div className="creds-connected">
-            <span className="creds-status">
-              Connected as <strong>{creds.email}</strong>
-            </span>
-            <div className="creds-connected-actions">
-              <button className="btn-link" onClick={startEditing}>Change</button>
-              <button className="btn-link btn-link-danger" onClick={clearCreds}>Disconnect</button>
+      <div className="confluence-user-bar">
+        <span>Logged in as <strong>{user.displayName ?? user.email}</strong></span>
+        <button className="btn-link btn-link-danger" onClick={handleLogout}>Log out</button>
+      </div>
+
+      <div className="confluence-search-bar">
+        <input
+          type="text"
+          className="confluence-search-input"
+          placeholder="Search Confluence…"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+          disabled={loading}
+        />
+        <button className="btn-primary" onClick={handleSearch} disabled={loading || !query.trim()}>
+          {loading ? 'Searching…' : 'Search'}
+        </button>
+      </div>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {loading && (
+        <div className="loading-state">
+          <div className="spinner" />
+          <span>Querying Confluence…</span>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
+        <section className="results-section">
+          <div className="results-header">
+            <div>
+              <h2>Results</h2>
+              <p className="results-meta">{results.length} page{results.length !== 1 ? 's' : ''} found</p>
             </div>
-          </div>
-        ) : (
-          <div className="creds-form">
-            <div className="creds-form-header">
-              <h3>Connect to Confluence</h3>
-              <p>
-                Enter your Datadog email and an{' '}
-                <a
-                  href="https://id.atlassian.com/manage-profile/security/api-tokens"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Atlassian API token
-                </a>
-                . Credentials are stored in your browser only.
-              </p>
-            </div>
-            <div className="creds-fields">
-              <div className="field">
-                <label>Company Email</label>
-                <input
-                  type="email"
-                  placeholder="you@datadoghq.com"
-                  value={emailInput}
-                  onChange={e => setEmailInput(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label>API Token</label>
-                <input
-                  type="password"
-                  placeholder="Paste your Atlassian API token"
-                  value={tokenInput}
-                  onChange={e => setTokenInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveCreds() }}
-                />
-              </div>
-            </div>
-            <div className="creds-actions">
-              <button
-                className="btn-primary"
-                onClick={saveCreds}
-                disabled={!emailInput.trim() || !tokenInput.trim()}
-              >
-                Save & Connect
+            <div className="results-actions">
+              <button className="btn-secondary export-btn" onClick={handleCopy}>
+                {copied ? 'Copied!' : 'Copy for Sheets'}
               </button>
-              {creds && (
-                <button className="btn-secondary" onClick={() => setEditingCreds(false)}>
-                  Cancel
-                </button>
-              )}
+              <button className="btn-primary export-btn" onClick={() => exportConfluenceCsv(results)}>
+                Export CSV
+              </button>
             </div>
           </div>
-        )}
-      </section>
-
-      {/* Search bar — only when connected */}
-      {creds && !editingCreds && (
-        <>
-          <div className="confluence-search-bar">
-            <input
-              type="text"
-              className="confluence-search-input"
-              placeholder="Search Confluence…"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-              disabled={loading}
-            />
-            <button
-              className="btn-primary"
-              onClick={handleSearch}
-              disabled={loading || !query.trim()}
-            >
-              {loading ? 'Searching…' : 'Search'}
-            </button>
+          <div className="table-wrapper">
+            <table className="results-table">
+              <thead>
+                <tr>
+                  <th>Space</th>
+                  <th>Page Title</th>
+                  <th>URL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.space}</td>
+                    <td>{r.title}</td>
+                    <td>
+                      <a href={r.url} target="_blank" rel="noopener noreferrer">{r.url}</a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        </section>
+      )}
 
-          {error && <div className="error-banner">{error}</div>}
-
-          {loading && (
-            <div className="loading-state">
-              <div className="spinner" />
-              <span>Querying datadoghq.atlassian.net…</span>
-            </div>
-          )}
-
-          {!loading && results.length > 0 && (
-            <section className="results-section">
-              <div className="results-header">
-                <div>
-                  <h2>Results</h2>
-                  <p className="results-meta">
-                    {results.length} page{results.length !== 1 ? 's' : ''} found
-                  </p>
-                </div>
-                <div className="results-actions">
-                  <button className="btn-secondary export-btn" onClick={handleCopy}>
-                    {copied ? 'Copied!' : 'Copy for Sheets'}
-                  </button>
-                  <button className="btn-primary export-btn" onClick={() => exportConfluenceCsv(results)}>
-                    Export CSV
-                  </button>
-                </div>
-              </div>
-              <div className="table-wrapper">
-                <table className="results-table">
-                  <thead>
-                    <tr>
-                      <th>Space</th>
-                      <th>Page Title</th>
-                      <th>URL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((r, i) => (
-                      <tr key={i}>
-                        <td>{r.space}</td>
-                        <td>{r.title}</td>
-                        <td>
-                          <a href={r.url} target="_blank" rel="noopener noreferrer">
-                            {r.url}
-                          </a>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {!loading && searched && results.length === 0 && (
-            <div className="empty-state">
-              No Confluence pages found for "{query}".
-            </div>
-          )}
-        </>
+      {!loading && searched && results.length === 0 && (
+        <div className="empty-state">No Confluence pages found for "{query}".</div>
       )}
     </div>
   )
