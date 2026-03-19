@@ -19,7 +19,7 @@ interface ConfluenceApiResponse {
 const CONFLUENCE_BASE = 'https://datadoghq.atlassian.net/wiki/rest/api'
 
 async function cfSearch(credentials: string, query: string, limit = 25): Promise<ConfluencePage[]> {
-  const cql = `text ~ "${query.replace(/"/g, '\\"')}" AND type = "page" ORDER BY score DESC`
+  const cql = `type = page AND text ~ "${query.replace(/"/g, '\\"')}"`
   const url = `${CONFLUENCE_BASE}/content/search?cql=${encodeURIComponent(cql)}&limit=${limit}&expand=space`
 
   const res = await fetch(url, {
