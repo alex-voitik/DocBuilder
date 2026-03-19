@@ -10,7 +10,7 @@ export default function handler(req: IncomingMessage, res: ServerResponse) {
   const params = new URLSearchParams({
     audience: 'api.atlassian.com',
     client_id: process.env.ATLASSIAN_CLIENT_ID ?? '',
-    scope: 'read:me read:confluence-content.all',
+    scope: 'read:confluence-content.all read:confluence-space.summary offline_access',
     redirect_uri: process.env.ATLASSIAN_REDIRECT_URI ?? '',
     state,
     response_type: 'code',

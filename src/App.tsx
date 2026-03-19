@@ -9,7 +9,10 @@ import './App.css'
 type Tab = 'datadog' | 'confluence'
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('datadog')
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('tab') === 'confluence' ? 'confluence' : 'datadog'
+  })
   const [entries, setEntries] = useState<ProductEntry[]>([
     { id: '1', product: '', searchTerms: [] },
   ])

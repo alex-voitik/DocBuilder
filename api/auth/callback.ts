@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { encryptSession, parseCookies, sessionCookieHeader, type AuthSession } from '../../server/auth.js'
+import { encryptCode, parseCookies, type AuthSession } from '../../server/auth.js'
 
 async function exchangeCode(code: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
   const res = await fetch('https://auth.atlassian.com/oauth/token', {
@@ -32,9 +32,9 @@ async function getMe(accessToken: string): Promise<{ email: string; displayName:
   const res = await fetch('https://api.atlassian.com/me', {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
   })
-  if (!res.ok) throw new Error('Could not fetch user info')
+  if (!res.ok) return { email: '', displayName: 'Atlassian User' }
   const me = await res.json() as { email?: string; displayName?: string; name?: string }
-  return { email: me.email ?? '', displayName: me.displayName ?? me.name ?? me.email ?? '' }
+  return { email: me.email ?? '', displayName: me.displayName ?? me.name ?? me.email ?? 'Atlassian User' }
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -72,12 +72,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       siteUrl,
     }
 
+    const code = encryptCode(session)
     res.writeHead(302, {
-      'Set-Cookie': [
-        sessionCookieHeader(encryptSession(session), 365 * 24 * 60 * 60, isSecure),
-        `atl_state=; HttpOnly; Path=/; Max-Age=0${isSecure ? '; Secure' : ''}`,
-      ],
-      'Location': '/',
+      'Set-Cookie': `atl_state=; HttpOnly; Path=/; Max-Age=0${isSecure ? '; Secure' : ''}`,
+      'Location': `/?tab=confluence&code=${encodeURIComponent(code)}`,
     })
     res.end()
   } catch (err) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ConfluenceResult, ConfluenceSearchResponse, AtlassianUser } from '../types'
 
 function exportConfluenceCsv(results: ConfluenceResult[]) {
@@ -26,6 +26,10 @@ function copyForSheets(results: ConfluenceResult[]) {
 }
 
 export default function ConfluenceTab() {
+  // Capture URL params at render time — useEffect runs twice in StrictMode dev,
+  // and the second run would see a cleared URL if we read inside the effect.
+  const [initialCode] = useState(() => new URLSearchParams(window.location.search).get('code'))
+  const exchangeAttempted = useRef(false)
   const [user, setUser] = useState<AtlassianUser | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ConfluenceResult[]>([])
@@ -34,19 +38,40 @@ export default function ConfluenceTab() {
   const [searched, setSearched] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Check login state on mount + handle error param from OAuth redirect
+  // Check login state on mount + handle error/code params from OAuth redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const oauthError = params.get('error')
+
     if (oauthError) {
       setError(`Login failed: ${oauthError}`)
-      window.history.replaceState({}, '', window.location.pathname)
+      window.history.replaceState({}, '', window.location.pathname + '?tab=confluence')
     }
 
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then((data: AtlassianUser) => setUser(data))
-      .catch(() => setUser({ loggedIn: false }))
+    const init = async () => {
+      if (initialCode && !exchangeAttempted.current) {
+        exchangeAttempted.current = true
+        window.history.replaceState({}, '', window.location.pathname + '?tab=confluence')
+        try {
+          const res = await fetch('/api/auth/exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: initialCode }),
+          })
+          if (!res.ok) throw new Error('Code exchange failed')
+        } catch {
+          setError('Login failed: could not complete authentication')
+          setUser({ loggedIn: false })
+          return
+        }
+      }
+      fetch('/api/auth/me')
+        .then(r => r.json())
+        .then((data: AtlassianUser) => setUser(data))
+        .catch(() => setUser({ loggedIn: false }))
+    }
+
+    init()
   }, [])
 
   const handleLogin = () => {
@@ -125,7 +150,7 @@ export default function ConfluenceTab() {
   return (
     <div className="confluence-tab">
       <div className="confluence-user-bar">
-        <span>Logged in as <strong>{user.displayName ?? user.email}</strong></span>
+        <span>Logged in as <strong>{user.displayName || user.email || 'Atlassian User'}</strong></span>
         <button className="btn-link btn-link-danger" onClick={handleLogout}>Log out</button>
       </div>
 

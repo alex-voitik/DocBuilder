@@ -30,13 +30,14 @@ async function cfSearch(
   })
 
   if (!res.ok) {
-    if (res.status === 401) throw new Error('Atlassian session expired. Please log in again.')
-    if (res.status === 403) throw new Error('Access denied to Confluence.')
     let detail = res.statusText
     try {
       const body = await res.json() as { message?: string }
       if (body.message) detail = body.message
     } catch { /* ignore */ }
+    console.error(`[cfSearch] ${res.status} from ${url}: ${detail}`)
+    if (res.status === 401) throw new Error('Atlassian session expired. Please log in again.')
+    if (res.status === 403) throw new Error('Access denied to Confluence.')
     throw new Error(`Confluence API error: ${res.status} ${detail}`)
   }
 

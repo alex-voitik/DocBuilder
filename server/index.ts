@@ -3,7 +3,7 @@ import express from 'express'
 import { searchDocs } from './search.js'
 import { searchConfluence } from './confluenceSearch.js'
 import {
-  parseCookies, decryptSession, encryptSession, refreshIfExpired,
+  parseCookies, decryptSession, encryptSession, encryptCode, decryptCode, refreshIfExpired,
   sessionCookieHeader, clearSessionCookieHeader, COOKIE_NAME,
   type AuthSession,
 } from './auth.js'
@@ -46,8 +46,8 @@ app.get('/api/auth/atlassian', (req, res) => {
   const params = new URLSearchParams({
     audience: 'api.atlassian.com',
     client_id: process.env.ATLASSIAN_CLIENT_ID ?? '',
-    scope: 'read:me read:confluence-content.all',
-    redirect_uri: `http://localhost:5173/api/auth/callback`,
+    scope: 'read:confluence-content.all read:confluence-space.summary offline_access',
+    redirect_uri: 'http://localhost:5173/api/auth/callback',
     state,
     response_type: 'code',
     prompt: 'consent',
@@ -91,13 +91,14 @@ app.get('/api/auth/callback', async (req, res) => {
       }),
     ])
     if (!resourcesRes.ok) throw new Error('Could not fetch accessible resources')
-    if (!meRes.ok) throw new Error('Could not fetch user info')
 
     const resources = await resourcesRes.json() as Array<{ id: string; url: string; scopes: string[] }>
     const site = resources.find(r => r.scopes.some(s => s.includes('confluence'))) ?? resources[0]
     if (!site) throw new Error('No Confluence instance found')
 
-    const me = await meRes.json() as { email?: string; displayName?: string; name?: string }
+    const me = meRes.ok
+      ? await meRes.json() as { email?: string; displayName?: string; name?: string }
+      : {}
 
     const session: AuthSession = {
       accessToken: tokens.access_token,
@@ -109,11 +110,10 @@ app.get('/api/auth/callback', async (req, res) => {
       siteUrl: site.url,
     }
 
-    res.setHeader('Set-Cookie', [
-      sessionCookieHeader(encryptSession(session), 365 * 24 * 60 * 60, false),
-      `atl_state=; HttpOnly; Path=/; Max-Age=0`,
-    ])
-    res.redirect('/')
+    const onetimeCode = encryptCode(session)
+    console.log('[callback] redirecting with one-time code, length:', onetimeCode.length)
+    res.setHeader('Set-Cookie', `atl_state=; HttpOnly; Path=/; Max-Age=0`)
+    res.redirect(`/?tab=confluence&code=${encodeURIComponent(onetimeCode)}`)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Auth error'
     console.error('[auth/callback]', message)
@@ -126,9 +126,23 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true })
 })
 
+app.post('/api/auth/exchange', (req, res) => {
+  const { code } = req.body as { code?: string }
+  console.log('[exchange] called, code present:', !!code, 'length:', code?.length)
+  if (!code) { res.status(400).json({ error: 'Missing code' }); return }
+  const session = decryptCode(code)
+  console.log('[exchange] session:', session ? `ok (${session.email})` : 'null (invalid/expired)')
+  if (!session) { res.status(400).json({ error: 'Invalid or expired code' }); return }
+  res.setHeader('Set-Cookie', sessionCookieHeader(encryptSession(session), 365 * 24 * 60 * 60, false))
+  console.log('[exchange] cookie set, responding ok')
+  res.json({ ok: true })
+})
+
 app.get('/api/auth/me', (req, res) => {
+  console.log('[me] cookie header:', req.headers.cookie ?? '(none)')
   const cookies = parseCookies(req.headers.cookie)
   const session = cookies[COOKIE_NAME] ? decryptSession(cookies[COOKIE_NAME]) : null
+  console.log('[me] session:', session ? `ok (${session.email})` : 'null')
   if (!session) {
     res.json({ loggedIn: false })
   } else {
@@ -157,6 +171,8 @@ app.post('/api/confluence-search', async (req, res) => {
   if (refreshed) {
     res.setHeader('Set-Cookie', sessionCookieHeader(encryptSession(session), 365 * 24 * 60 * 60, false))
   }
+
+  console.log('[confluence-search] cloudId:', session.cloudId, 'siteUrl:', session.siteUrl, 'token prefix:', session.accessToken.slice(0, 20))
 
   try {
     const results = await searchConfluence(session.accessToken, session.cloudId, session.siteUrl, query)

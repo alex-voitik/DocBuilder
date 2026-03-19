@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import zlib from 'node:zlib'
 
 const COOKIE_NAME = 'atl_session'
 const ALGORITHM = 'aes-256-gcm'
@@ -23,7 +24,8 @@ export function encryptSession(session: AuthSession): string {
   const key = getKey()
   const iv = crypto.randomBytes(12)
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(session), 'utf8'), cipher.final()])
+  const compressed = zlib.deflateRawSync(JSON.stringify(session))
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()])
   const tag = cipher.getAuthTag()
   return [iv, tag, encrypted].map(b => b.toString('base64url')).join('.')
 }
@@ -34,8 +36,8 @@ export function decryptSession(token: string): AuthSession | null {
     const key = getKey()
     const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(ivB64, 'base64url'))
     decipher.setAuthTag(Buffer.from(tagB64, 'base64url'))
-    const decrypted = decipher.update(Buffer.from(dataB64, 'base64url')).toString('utf8') + decipher.final('utf8')
-    return JSON.parse(decrypted) as AuthSession
+    const decrypted = Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64url')), decipher.final()])
+    return JSON.parse(zlib.inflateRawSync(decrypted).toString('utf8')) as AuthSession
   } catch {
     return null
   }
@@ -87,3 +89,29 @@ export async function refreshIfExpired(session: AuthSession): Promise<{ session:
 }
 
 export { COOKIE_NAME }
+
+// Short-lived one-time code for the OAuth callback → frontend exchange
+export function encryptCode(session: AuthSession): string {
+  const key = getKey()
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
+  const compressed = zlib.deflateRawSync(JSON.stringify({ session, exp: Date.now() + 60_000 }))
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return [iv, tag, encrypted].map(b => b.toString('base64url')).join('.')
+}
+
+export function decryptCode(token: string): AuthSession | null {
+  try {
+    const [ivB64, tagB64, dataB64] = token.split('.')
+    const key = getKey()
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(ivB64, 'base64url'))
+    decipher.setAuthTag(Buffer.from(tagB64, 'base64url'))
+    const decrypted = Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64url')), decipher.final()])
+    const { session, exp } = JSON.parse(zlib.inflateRawSync(decrypted).toString('utf8')) as { session: AuthSession; exp: number }
+    if (Date.now() > exp) return null
+    return session
+  } catch {
+    return null
+  }
+}
