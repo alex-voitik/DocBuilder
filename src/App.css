@@ -15,6 +15,33 @@
   font-size: 0.95rem;
 }
 
+/* ── Tab navigation ───────────────────────────────────── */
+.tab-nav {
+  background: white;
+  border-bottom: 1px solid var(--dd-gray-200);
+  display: flex;
+  gap: 0;
+  padding: 0 2rem;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--dd-gray-600);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover:not(.active) { color: var(--dd-purple); }
+.tab-btn.active {
+  color: var(--dd-purple);
+  border-bottom-color: var(--dd-purple);
+  font-weight: 600;
+}
+
 /* ── Main layout ──────────────────────────────────────── */
 .app-main {
   max-width: 1100px;
@@ -466,6 +493,77 @@
   background: rgba(255, 59, 48, 0.1);
   color: #c0392b;
 }
+
+/* ── Confluence tab ───────────────────────────────────── */
+.confluence-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--dd-purple);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.btn-link:hover { opacity: 0.75; }
+.btn-link-danger { color: var(--dd-error); }
+
+/* Confluence login */
+.confluence-login {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--dd-gray-200);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.confluence-login h2 { font-size: 1.1rem; font-weight: 600; }
+.confluence-login p { font-size: 0.9rem; color: var(--dd-gray-600); }
+.btn-atlassian { margin-top: 0.5rem; }
+
+/* Confluence user bar */
+.confluence-user-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: var(--dd-gray-600);
+  background: white;
+  border: 1px solid var(--dd-gray-200);
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+}
+.confluence-user-bar strong { color: var(--dd-gray-900); }
+.confluence-user-bar .btn-link { margin-left: auto; }
+
+/* Confluence search bar */
+.confluence-search-bar {
+  display: flex;
+  gap: 0.75rem;
+}
+.confluence-search-input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid var(--dd-gray-200);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: var(--dd-gray-900);
+  background: white;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.confluence-search-input:focus {
+  outline: none;
+  border-color: var(--dd-purple);
+  box-shadow: 0 0 0 3px rgba(99, 44, 166, 0.12);
+}
+.confluence-search-input:disabled { opacity: 0.6; }
 
 /* ── Empty state ──────────────────────────────────────── */
 .empty-state {

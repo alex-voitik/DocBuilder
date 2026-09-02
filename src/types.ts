@@ -26,3 +26,24 @@ export interface SearchResponse {
   totalUrls: number
   error?: string
 }
+
+export interface ConfluenceResult {
+  space: string
+  title: string
+  url: string
+}
+
+export interface ConfluenceSearchRequest {
+  query: string
+}
+
+export interface AtlassianUser {
+  loggedIn: boolean
+  email?: string
+  displayName?: string
+}
+
+export interface ConfluenceSearchResponse {
+  results: ConfluenceResult[]
+  error?: string
+}
